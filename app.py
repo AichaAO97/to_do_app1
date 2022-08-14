@@ -1,8 +1,10 @@
 import imp
+from os import abort
 import sys
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import sysconfig
+from flask_migrate import Migrate
 
 
 
@@ -11,7 +13,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:aicha@127.0.0.1:5
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-
+migrate = Migrate(app, db)
 
 class Todo(db.Model):
     __tablename__ = 'todos'
@@ -31,7 +33,7 @@ class TodoList(db.Model):
 
 
 
-db.create_all()
+# db.create_all()
 
 
 
@@ -53,7 +55,10 @@ def create_todo():
     finally:
         db.session.close()
     
-    if not error:
+    if error:
+        abort(400)
+    
+    else:
         return jsonify(body)
 
 
@@ -61,6 +66,7 @@ def create_todo():
 def set_completed_todo(todo_id):
     try:
         completed = request.get_json()['completed']
+        print('completed', completed)
         todo = Todo.query.get(todo_id)
         todo.completed = completed
         db.session.commit()
@@ -88,4 +94,4 @@ def delete_todo(todo_id):
 
 @app.route('/')
 def index():
-    return render_template('index.html', data = Todo.query.all())
+    return render_template('index.html', data = Todo.query.order_by('id').all())
